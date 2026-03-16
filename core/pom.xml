@@ -101,6 +101,11 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Apache Commons Lang for utilities -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
 
 	</dependencies>
 

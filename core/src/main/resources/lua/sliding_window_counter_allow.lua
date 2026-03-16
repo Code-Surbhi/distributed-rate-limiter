@@ -1,4 +1,4 @@
--- Sliding Window Counter Rate Limiter - Allow Request
+-- Sliding Window Counter Rate Limiter - Allow Request (Optimized)
 --
 -- KEYS[1] = previous count key
 -- KEYS[2] = current count key
@@ -9,9 +9,12 @@
 -- ARGV[3] = currentTime (current timestamp in milliseconds)
 -- ARGV[4] = ttl (seconds)
 --
--- Returns:
--- 1 if request allowed
--- 0 if rate limited
+-- Returns a table with:
+-- [1] = allowed (1 or 0)
+-- [2] = previousCount
+-- [3] = currentCount
+-- [4] = estimatedCount
+-- [5] = windowStart
 
 local previousKey = KEYS[1]
 local currentKey = KEYS[2]
@@ -51,11 +54,13 @@ local previousWindowWeight = math.max(0, 1.0 - windowProgress)
 local estimatedCount = (previousCount * previousWindowWeight) + currentCount
 
 -- Check if request is allowed
+local allowed = 0
 if estimatedCount < maxRequests then
     -- Increment current counter
     currentCount = currentCount + 1
     redis.call('SET', currentKey, currentCount, 'EX', ttl)
-    return 1  -- Request allowed
+    allowed = 1
 end
 
-return 0  -- Rate limited
+-- Return all data in one response (no additional calls needed!)
+return {allowed, previousCount, currentCount, estimatedCount, storedWindowStart}
