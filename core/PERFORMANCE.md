@@ -59,6 +59,8 @@ Benchmarks use the `/api/benchmark/run` endpoint which:
   "minLatencyMs": 2,
   "maxLatencyMs": 27
 }
+
+
 ```
 
 **Key Metrics:**
@@ -66,7 +68,65 @@ Benchmarks use the `/api/benchmark/run` endpoint which:
 - ✅ **Sub-20ms p99 latency** under load
 - ✅ **Consistent performance** (max only 27ms)
 - ✅ **10ms average** end-to-end latency
+---
+### Large Load Test (50,000 requests, 100 threads)
 
+**With Rate Limiting (Pro Tier):**
+```json
+{
+  "requestsPerSecond": 1985,
+  "successCount": 37000,
+  "rateLimitedCount": 13000,
+  "avgLatencyMs": 47,
+  "p99LatencyMs": 111
+}
+```
+
+**Observation:** Rate limiting correctly enforced under heavy load. 13,000 requests properly rejected.
+
+**Without Rate Limiting (Enterprise Tier, 1000 users):**
+```json
+{
+  "requestsPerSecond": 894,
+  "successCount": 50000,
+  "rateLimitedCount": 0,
+  "avgLatencyMs": 111,
+  "p99LatencyMs": 264
+}
+```
+
+**Key Finding:** Performance degrades with extreme concurrency (100 threads). Optimal thread count: 50.
+
+---
+
+### Performance Scaling Characteristics
+
+| Threads | Requests | RPS | Avg Latency | p99 Latency |
+|---------|----------|-----|-------------|-------------|
+| 10 | 1,000 | 622 | 15ms | 55ms |
+| 50 | 10,000 | **4,596** | **10ms** | **20ms** ⭐ |
+| 100 | 50,000 | 894 | 111ms | 264ms |
+
+**Conclusion:** Sweet spot is 50 concurrent threads per instance (4,600 RPS with excellent latency).
+
+---
+
+## Production Deployment Recommendations
+
+### Single Instance Capacity
+- **Recommended load:** 3,000-4,000 RPS per instance
+- **Max sustainable:** 5,000 RPS
+- **Thread pool:** 50 threads
+
+### Horizontal Scaling
+For target load of **50,000 RPS:**
+- Deploy: **12-15 instances** behind load balancer
+- Each handling: ~3,500 RPS
+- Total capacity: **52,500 RPS** with headroom
+
+### Auto-Scaling Rules
+- Scale up: CPU > 70% OR avg latency > 50ms
+- Scale down: CPU < 30% AND avg latency < 20ms
 ---
 
 ## Optimizations Applied
